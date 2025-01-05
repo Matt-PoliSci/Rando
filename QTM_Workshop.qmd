@@ -1,0 +1,239 @@
+---
+title: "QTM Workshop"
+format: html
+---
+
+# Set-up 
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(sf)
+library(mapview)
+```
+
+
+# Data Imports/Cleaning
+
+## shp files
+```{r}
+# tracts shp
+tracts_shp <- tigris::tracts(state = "GA", county = c("Fulton", "DeKalb"))
+
+# atl shp
+atl_shp <- tigris::places(state = "GA", year = "2023") %>%
+  filter(NAME == "Atlanta") %>%
+  select(GEOID, NAME)
+
+#npu shp
+
+#county shp
+
+```
+
+## acs code
+```{r}
+tidycensus::census_api_key("a2d6be80cb2b9b6933022891558abe3ad5a5a643", install = T)
+```
+
+```{r}
+codebk <- tidycensus::load_variables(year = 2023, dataset = "acs5")
+```
+
+
+
+### burden
+```{r}
+burden <- get_acs(
+  geography = "tract",
+  state = "GA",
+  county = c("Fulton", "DeKalb"),
+  year = 2023,
+  geometry = T,
+  variables = c(
+     `Not Burdened` = "B25070_002",
+    `Not Burdened` = "B25070_003",
+   `Not Burdened` = "B25070_004",
+    `Not Burdened` = "B25070_005",
+    Burdened = "B25070_006",
+    Burdened = "B25070_007",
+   Burdened = "B25070_008",
+   Burdened = "B25070_009"
+  )
+) %>%
+  group_by(GEOID, variable) %>%
+  mutate(estimate = sum(estimate)) %>%
+  select(!moe) %>%
+  distinct(.keep_all = T) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  ungroup()
+```
+
+### race
+```{r}
+race <- get_acs(
+  geography = "tract",
+  state = "GA",
+  county = c("Fulton", "DeKalb"),
+  year = 2023,
+  geometry = T,
+  variables = c(
+  White = "B03002_003",
+  Black = "B03002_004",
+  Native = "B03002_005",
+  Asian = "B03002_006",
+  HIPI = "B03002_007",
+  Hispanic = "B03002_012"
+  )
+) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  group_by(GEOID, variable) %>%
+  mutate(estimate = sum(estimate)) %>%
+  select(!moe) %>%
+  distinct(.keep_all = T) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  ungroup()
+
+```
+### tenure
+```{r}
+tenure <- get_acs(
+  geography = "tract",
+  state = "GA",
+  county = c("Fulton", "DeKalb"),
+  year = 2023,
+  geometry = T,
+  variables = c(
+  Owner= "B25003_002",
+  Renter = "B25003_003"
+  )
+) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  group_by(GEOID, variable) %>%
+  mutate(estimate = sum(estimate)) %>%
+  select(!moe) %>%
+  distinct(.keep_all = T) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  ungroup()
+```
+### Welfare (SNAP/Cash Assistance)
+```{r}
+welfare <- get_acs(
+  geography = "tract",
+  state = "GA",
+  county = c("Fulton", "DeKalb"),
+  year = 2023,
+  geometry = T,
+  variables = c(
+  Welfare= "B19058_002",
+  No_Welfare = "B19058_003"
+  )
+) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  group_by(GEOID, variable) %>%
+  mutate(estimate = sum(estimate)) %>%
+  select(!moe) %>%
+  distinct(.keep_all = T) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  ungroup()
+```
+
+### Education
+```{r}
+education <- get_acs(
+  geography = "tract",
+  state = "GA",
+  county = c("Fulton", "DeKalb"),
+  year = 2023,
+  geometry = T,
+  variables = c(
+  None= "B15003_002",
+  None= "B15003_003",
+  None= "B15003_004",
+  None= "B15003_005",
+  None= "B15003_006",
+  None= "B15003_007",
+  None= "B15003_008",
+  None= "B15003_009",
+  None= "B15003_010",
+  None= "B15003_011",
+  None= "B15003_012",
+  None= "B15003_013",
+  None= "B15003_014",
+  None= "B15003_015",
+  None= "B15003_016",
+  High_School_Diploma = "B15003_017",
+  High_School_Diploma = "B15003_018",
+  Some_College = "B15003_019",
+  Some_College = "B15003_020",
+  Assoc = "B15003_021",
+  Bachelor = "B15003_022",
+  Grad = "B15003_023",
+  Grad = "B15003_024",
+  Grad = "B15003_025"
+  )
+) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  group_by(GEOID, variable) %>%
+  mutate(estimate = sum(estimate)) %>%
+  select(!moe) %>%
+  distinct(.keep_all = T) %>%
+  group_by(GEOID) %>%
+  mutate(prop = estimate/sum(estimate,na.rm = T)) %>%
+  ungroup()
+
+```
+
+### HH Income
+```{r}
+hh_income <- get_acs(
+  geography = "tract",
+  state = "GA",
+  county = c("Fulton", "DeKalb"),
+  year = 2023,
+  geometry = T,
+  variables = c(HH_Income = "B19013_001")
+) 
+```
+
+## join acs data
+```{r}
+acs_df <- bind_rows(burden, education, race, tenure, welfare, hh_income) 
+```
+
+# Isolate data to city of Atlanta
+```{r}
+tracts_intersection <- tracts_shp %>%
+  # Create a field with original tract area
+  mutate(orig_area = st_area(geometry)) %>%
+  # Intersect with city boundary
+  st_intersection(atl_shp) %>%
+  # Calculate area of intersected portion
+  mutate(
+    intersect_area = st_area(geometry),
+    pct_in_city = as.numeric(intersect_area / orig_area)
+  ) %>%
+  # Keep only tracts where more than 50% is within the city
+  filter(pct_in_city > 0.5)
+
+keep_tracts_vec <- tracts_intersection$GEOID
+
+acs_df <- filter(acs_df, GEOID %in% keep_tracts_vec)
+
+```
+
+# Exploratory Analytics
+```{r}
+acs_df %>%
+  st_drop_geometry() %>%
+  
+```
+

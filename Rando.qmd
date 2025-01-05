@@ -1,0 +1,9 @@
+---
+title: "Rando"
+---
+
+
+
+```{r}
+install.packages(c("tidyverse", "tidymodels", "tidycensus", "sf", "plotly", "mapview", "flextable", "reactable", "curl", "jsonlite", "ggbeeswarm", "waffle", "tmap"))
+```
