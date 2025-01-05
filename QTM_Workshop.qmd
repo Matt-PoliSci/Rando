@@ -1,6 +1,8 @@
 ---
 title: "QTM Workshop"
 format: html
+execute:
+  freeze: auto
 ---
 
 # Set-up 
@@ -206,7 +208,10 @@ hh_income <- get_acs(
 
 ## join acs data
 ```{r}
-acs_df <- bind_rows(burden, education, race, tenure, welfare, hh_income) 
+acs_df <- bind_rows(burden, education, race, tenure, welfare, hh_income) %>%
+  mutate(prop = if_else(variable == "HH_Income", estimate, prop)) %>%
+  select(! c(moe, estimate, NAME)) %>%
+  distinct( .keep_all = T)
 ```
 
 # Isolate data to city of Atlanta
@@ -231,9 +236,52 @@ acs_df <- filter(acs_df, GEOID %in% keep_tracts_vec)
 ```
 
 # Exploratory Analytics
+
+### Stats Distribution
+#### Violin Plots
 ```{r}
 acs_df %>%
   st_drop_geometry() %>%
+  ggplot(aes(x = variable, y = prop, fill = variable, color = variable)) + 
+  geom_violin() + 
+  coord_flip()
   
+  
+```
+## beeswarm plot
+```{r}
+library(ggbeeswarm)
+acs_df %>%
+  st_drop_geometry() %>%
+  ggplot(aes(x = variable, y = prop)) + 
+  geom_beeswarm() + 
+  coord_flip()
+```
+
+## maps
+```{r}
+acs_df %>%
+  group_split(variable) %>%
+  map(~mapview(.x, zcol = "prop", label = "variable", layer.name = unique(.x$variable)))
+```
+
+# initial regression model
+```{r}
+model_data <- acs_df %>%
+  st_drop_geometry() %>%
+  filter(variable %in% c("Asian", "Assoc", "Bachelor", "Black", "Burdened", "Grad", "HH_Income", "High_School_Diploma", "Hispanic", "Native", "Owner", "Renter", "Some_College", "Welfare", "White")) %>%
+  pivot_wider(id_cols = GEOID,
+              names_from = variable,
+              values_from = prop)
+
+model_data
+
+# formula
+formula <- "Burdened ~ High_School_Diploma + Some_College + Assoc + Bachelor + Grad + White + Black + Native + Asian + Hispanic + Owner + Welfare + HH_Income"
+
+model1 <- lm(formula = formula, data = model_data)
+
+summary(model1)
+
 ```
 
